@@ -15,6 +15,8 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.math.GridPoint2;
 import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.Rectangle;
+import ru.mipt.bit.platformer.impl.ObstacleImpl;
+import ru.mipt.bit.platformer.impl.PlayerImpl;
 import ru.mipt.bit.platformer.util.TileMovement;
 
 import static com.badlogic.gdx.Input.Keys.*;
@@ -33,19 +35,10 @@ public class GameDesktopLauncher implements ApplicationListener {
     private TileMovement tileMovement;
 
     private Texture blueTankTexture;
-    private TextureRegion playerGraphics;
-    private Rectangle playerRectangle;
-    // player current position coordinates on level 10x8 grid (e.g. x=0, y=1)
-    private GridPoint2 playerCoordinates;
-    // which tile the player want to go next
-    private GridPoint2 playerDestinationCoordinates;
-    private float playerMovementProgress = 1f;
-    private float playerRotation;
+    private Player player;
 
     private Texture greenTreeTexture;
-    private TextureRegion treeObstacleGraphics;
-    private GridPoint2 treeObstacleCoordinates = new GridPoint2();
-    private Rectangle treeObstacleRectangle = new Rectangle();
+    private Obstacle obstacle;
 
     @Override
     public void create() {
@@ -59,89 +52,64 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         // Texture decodes an image file and loads it into GPU memory, it represents a native resource
         blueTankTexture = new Texture("images/tank_blue.png");
-        // TextureRegion represents Texture portion, there may be many TextureRegion instances of the same Texture
-        playerGraphics = new TextureRegion(blueTankTexture);
-        playerRectangle = createBoundingRectangle(playerGraphics);
-        // set player initial position
-        playerDestinationCoordinates = new GridPoint2(1, 1);
-        playerCoordinates = new GridPoint2(playerDestinationCoordinates);
-        playerRotation = 0f;
+        player = new PlayerImpl(
+                blueTankTexture,
+                new GridPoint2(1, 1),
+                tileMovement,
+                Direction.RIGHT
+        );
 
         greenTreeTexture = new Texture("images/greenTree.png");
-        treeObstacleGraphics = new TextureRegion(greenTreeTexture);
-        treeObstacleCoordinates = new GridPoint2(1, 3);
-        treeObstacleRectangle = createBoundingRectangle(treeObstacleGraphics);
-        moveRectangleAtTileCenter(groundLayer, treeObstacleRectangle, treeObstacleCoordinates);
+        obstacle = new ObstacleImpl(
+                greenTreeTexture,
+                new GridPoint2(1, 3),
+                groundLayer
+        );
     }
 
     @Override
     public void render() {
-        // clear the screen
+        clearScreen();
+        Direction desiredDirection = desiredDirection();
+        movePlayer(desiredDirection);
+        draw();
+    }
+
+    private void clearScreen() {
         Gdx.gl.glClearColor(0f, 0f, 0.2f, 1f);
         Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
+    }
 
-        // get time passed since the last render
-        float deltaTime = Gdx.graphics.getDeltaTime();
-
+    private Direction desiredDirection() {
+        Direction desiredDirection = Direction.NODIRECTION;
         if (Gdx.input.isKeyPressed(UP) || Gdx.input.isKeyPressed(W)) {
-            if (isEqual(playerMovementProgress, 1f)) {
-                // check potential player destination for collision with obstacles
-                if (!treeObstacleCoordinates.equals(incrementedY(playerCoordinates))) {
-                    playerDestinationCoordinates.y++;
-                    playerMovementProgress = 0f;
-                }
-                playerRotation = 90f;
-            }
+            desiredDirection = Direction.UP;
         }
         if (Gdx.input.isKeyPressed(LEFT) || Gdx.input.isKeyPressed(A)) {
-            if (isEqual(playerMovementProgress, 1f)) {
-                if (!treeObstacleCoordinates.equals(decrementedX(playerCoordinates))) {
-                    playerDestinationCoordinates.x--;
-                    playerMovementProgress = 0f;
-                }
-                playerRotation = -180f;
-            }
+            desiredDirection = Direction.LEFT;
         }
         if (Gdx.input.isKeyPressed(DOWN) || Gdx.input.isKeyPressed(S)) {
-            if (isEqual(playerMovementProgress, 1f)) {
-                if (!treeObstacleCoordinates.equals(decrementedY(playerCoordinates))) {
-                    playerDestinationCoordinates.y--;
-                    playerMovementProgress = 0f;
-                }
-                playerRotation = -90f;
-            }
+            desiredDirection = Direction.DOWN;
         }
         if (Gdx.input.isKeyPressed(RIGHT) || Gdx.input.isKeyPressed(D)) {
-            if (isEqual(playerMovementProgress, 1f)) {
-                if (!treeObstacleCoordinates.equals(incrementedX(playerCoordinates))) {
-                    playerDestinationCoordinates.x++;
-                    playerMovementProgress = 0f;
-                }
-                playerRotation = 0f;
-            }
+            desiredDirection = Direction.RIGHT;
         }
+        return desiredDirection;
+    }
 
-        // calculate interpolated player screen coordinates
-        tileMovement.moveRectangleBetweenTileCenters(playerRectangle, playerCoordinates, playerDestinationCoordinates, playerMovementProgress);
+    private void movePlayer(Direction desiredDirection) {
+        float deltaTime = Gdx.graphics.getDeltaTime();
+        player.move(desiredDirection, deltaTime, MOVEMENT_SPEED, obstacle);
+    }
 
-        playerMovementProgress = continueProgress(playerMovementProgress, deltaTime, MOVEMENT_SPEED);
-        if (isEqual(playerMovementProgress, 1f)) {
-            // record that the player has reached his/her destination
-            playerCoordinates.set(playerDestinationCoordinates);
-        }
-
+    private void draw() {
         // render each tile of the level
         levelRenderer.render();
 
         // start recording all drawing commands
         batch.begin();
-
-        // render player
-        drawTextureRegionUnscaled(batch, playerGraphics, playerRectangle, playerRotation);
-
-        // render tree obstacle
-        drawTextureRegionUnscaled(batch, treeObstacleGraphics, treeObstacleRectangle, 0f);
-
+        player.draw(batch);
+        obstacle.draw(batch);
         // submit all drawing requests
         batch.end();
     }
