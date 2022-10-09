@@ -15,16 +15,25 @@ import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.MathUtils;
 import ru.mipt.bit.platformer.direction.Direction;
 import ru.mipt.bit.platformer.gridpoint.GridPoint;
+import ru.mipt.bit.platformer.level.Level;
+import ru.mipt.bit.platformer.level.impl.LevelImpl;
 import ru.mipt.bit.platformer.obstacle.impl.ObstacleImpl;
 import ru.mipt.bit.platformer.obstacle.impl.ObstacleRendererImpl;
-import ru.mipt.bit.platformer.player.impl.PlayerImpl;
-import ru.mipt.bit.platformer.player.impl.PlayerRendererImpl;
+import ru.mipt.bit.platformer.tank.impl.TankImpl;
+import ru.mipt.bit.platformer.tank.impl.TankRendererImpl;
 import ru.mipt.bit.platformer.obstacle.Obstacle;
 import ru.mipt.bit.platformer.obstacle.ObstacleRenderer;
-import ru.mipt.bit.platformer.player.Player;
-import ru.mipt.bit.platformer.player.PlayerRenderer;
+import ru.mipt.bit.platformer.tank.Tank;
+import ru.mipt.bit.platformer.tank.TankRenderer;
 import ru.mipt.bit.platformer.util.GdxGameUtils;
 import ru.mipt.bit.platformer.util.TileMovement;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Scanner;
 
 import static com.badlogic.gdx.Input.Keys.*;
 import static com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT;
@@ -36,58 +45,96 @@ public class GameDesktopLauncher implements ApplicationListener {
     private static final float MOVEMENT_SPEED = 0.4f;
 
     private Batch batch;
-
-    private TiledMap level;
     private MapRenderer levelRenderer;
     private TileMovement tileMovement;
+    TiledMap tiledMap;
+    TiledMapTileLayer groundLayer;
 
     private Texture blueTankTexture;
-    private Player player;
-    private PlayerRenderer playerRenderer;
-
+    private ArrayList<TankRenderer> tankRenderers;
     private Texture greenTreeTexture;
-    private Obstacle obstacle;
-    private ObstacleRenderer obstacleRenderer;
+    private ArrayList<ObstacleRenderer> obstacleRenderers;
+
+    private Level level;
 
     @Override
     public void create() {
         batch = new SpriteBatch();
 
         // load level tiles
-        level = new TmxMapLoader().load("level.tmx");
-        levelRenderer = createSingleLayerMapRenderer(level, batch);
-        TiledMapTileLayer groundLayer = getSingleLayer(level);
+        tiledMap = new TmxMapLoader().load("level.tmx");
+        levelRenderer = createSingleLayerMapRenderer(tiledMap, batch);
+        groundLayer = getSingleLayer(tiledMap);
         tileMovement = new TileMovement(groundLayer, Interpolation.smooth);
 
         // Texture decodes an image file and loads it into GPU memory, it represents a native resource
         blueTankTexture = new Texture("images/tank_blue.png");
-        player = new PlayerImpl(
-                new GridPoint(1, 1),
-                Direction.RIGHT,
-                GdxGameUtils::continueProgress,
-                MathUtils::isEqual
-        );
-        playerRenderer = new PlayerRendererImpl(
-                blueTankTexture,
-                tileMovement
-        );
-
         greenTreeTexture = new Texture("images/greenTree.png");
-        obstacle = new ObstacleImpl(
-                new GridPoint(1, 3)
-        );
-        obstacleRenderer = new ObstacleRendererImpl(
-                greenTreeTexture,
-                groundLayer,
-                obstacle
-        );
+
+        tankRenderers = new ArrayList<>();
+        obstacleRenderers = new ArrayList<>();
+        level = extractLevelFromFile("src/main/resources/level.conf");
+    }
+
+    private LevelImpl extractLevelFromFile(String path) {
+        ArrayList<Tank> tanks = new ArrayList<>();
+        ArrayList<Obstacle> obstacles = new ArrayList<>();
+
+        int linesCnt = 0;
+        try {
+            linesCnt = (int)Files.lines(Paths.get(path)).count();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        try {
+            Scanner sc = new Scanner(new BufferedReader(new FileReader(path)));
+            for (int i = 0; sc.hasNextLine(); i++) {
+                String line = sc.nextLine();
+                for (int j = 0; j < line.length(); j++) {
+                    var currPt = new GridPoint(j, linesCnt - i);
+                    switch (line.charAt(j)) {
+                        case 'T':
+                            var newObstacle = new ObstacleImpl(currPt);
+                            obstacles.add(newObstacle);
+                            obstacleRenderers.add(new ObstacleRendererImpl(
+                                    greenTreeTexture,
+                                    groundLayer,
+                                    newObstacle
+                            ));
+                            break;
+                        case 'X':
+                            var newTank = new TankImpl(
+                                    currPt,
+                                    Direction.RIGHT,
+                                    GdxGameUtils::continueProgress,
+                                    MathUtils::isEqual
+                            );
+                            tanks.add(newTank);
+                            tankRenderers.add(new TankRendererImpl(
+                                    blueTankTexture,
+                                    tileMovement,
+                                    newTank
+                            ));
+                            break;
+                    }
+                }
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        return new LevelImpl(tanks, obstacles);
     }
 
     @Override
     public void render() {
         clearScreen();
-        Direction desiredDirection = desiredDirection();
-        movePlayer(desiredDirection);
+        float deltaTime = Gdx.graphics.getDeltaTime();
+        live(deltaTime);
         draw();
     }
 
@@ -96,7 +143,7 @@ public class GameDesktopLauncher implements ApplicationListener {
         Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    private Direction desiredDirection() {
+    private Direction getDesiredDirection() {
         Direction desiredDirection = Direction.NODIRECTION;
         if (Gdx.input.isKeyPressed(UP) || Gdx.input.isKeyPressed(W)) {
             desiredDirection = Direction.UP;
@@ -113,17 +160,26 @@ public class GameDesktopLauncher implements ApplicationListener {
         return desiredDirection;
     }
 
-    private void movePlayer(Direction desiredDirection) {
-        float deltaTime = Gdx.graphics.getDeltaTime();
-        player.move(desiredDirection, deltaTime, MOVEMENT_SPEED, obstacle);
+    private void live(float deltaTime) {
+        for (var tank : level.getTanks()) {
+            var desiredDirection = getDesiredDirection();
+            var desiredCoordinates = desiredDirection.getMovedPoint(tank.getDepartureCoordinates());
+            if (!level.isOccupied(desiredCoordinates)) {
+                tank.move(desiredDirection, deltaTime, MOVEMENT_SPEED);
+            }
+        }
     }
 
     private void draw() {
         levelRenderer.render();
         batch.begin();
 
-        playerRenderer.draw(batch, player);
-        obstacleRenderer.draw(batch);
+        for (var tankRenderer : tankRenderers) {
+            tankRenderer.draw(batch);
+        }
+        for (var obstacleRenderer : obstacleRenderers) {
+            obstacleRenderer.draw(batch);
+        }
 
         batch.end();
     }
@@ -148,7 +204,7 @@ public class GameDesktopLauncher implements ApplicationListener {
         // dispose of all the native resources (classes which implement com.badlogic.gdx.utils.Disposable)
         greenTreeTexture.dispose();
         blueTankTexture.dispose();
-        level.dispose();
+        tiledMap.dispose();
         batch.dispose();
     }
 

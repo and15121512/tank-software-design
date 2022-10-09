@@ -26,4 +26,8 @@ public class GridPoint {
         GridPoint g = (GridPoint)o;
         return this.x == g.x && this.y == g.y;
     }
+
+    public GridPoint copy() {
+        return new GridPoint(this.x, this.y);
+    }
 }

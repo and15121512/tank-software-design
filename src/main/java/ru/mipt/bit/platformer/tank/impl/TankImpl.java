@@ -1,13 +1,12 @@
-package ru.mipt.bit.platformer.player.impl;
+package ru.mipt.bit.platformer.tank.impl;
 
 import ru.mipt.bit.platformer.direction.Direction;
 import ru.mipt.bit.platformer.gridpoint.GridPoint;
-import ru.mipt.bit.platformer.obstacle.Obstacle;
-import ru.mipt.bit.platformer.player.FloatComparator;
-import ru.mipt.bit.platformer.player.Player;
-import ru.mipt.bit.platformer.player.ProgressUpdater;
+import ru.mipt.bit.platformer.tank.FloatComparator;
+import ru.mipt.bit.platformer.tank.Tank;
+import ru.mipt.bit.platformer.tank.ProgressUpdater;
 
-public class PlayerImpl implements Player {
+public class TankImpl implements Tank {
     private final GridPoint departureCoordinates;
     private final GridPoint destinationCoordinates;
     private float movementProgress;
@@ -28,7 +27,7 @@ public class PlayerImpl implements Player {
         return currentDirection;
     }
 
-    public PlayerImpl(
+    public TankImpl(
             GridPoint startCoordinates,
             Direction startDirection,
             ProgressUpdater progressUpdater,
@@ -45,23 +44,20 @@ public class PlayerImpl implements Player {
     public void move(
             Direction desiredDirection,
             float deltaTime,
-            float movementSpeed,
-            Obstacle obstacle
+            float movementSpeed
     ) {
-        tryToChangeMovementDirection(desiredDirection, obstacle.getCoordinates());
+        tryToChangeMovementDirection(desiredDirection);
         updateProgress(deltaTime, movementSpeed);
-        if (reachedDestinationCheck()) {
+        if (isDestinationReached()) {
             finishMovement();
         }
     }
 
-    private void tryToChangeMovementDirection(Direction desiredDirection, GridPoint obstacleCoordinates) {
-        if (desiredDirection != Direction.NODIRECTION && reachedDestinationCheck()) {
+    private void tryToChangeMovementDirection(Direction desiredDirection) {
+        if (desiredDirection != Direction.NODIRECTION && isDestinationReached()) {
             this.currentDirection = desiredDirection;
-            if (noObstacle(desiredDirection, obstacleCoordinates)) {
-                desiredDirection.movePoint(destinationCoordinates);
-                startMovement();
-            }
+            desiredDirection.movePoint(destinationCoordinates);
+            startMovement();
         }
     }
 
@@ -83,7 +79,7 @@ public class PlayerImpl implements Player {
         this.movementProgress = 0f;
     }
 
-    private boolean reachedDestinationCheck() {
+    private boolean isDestinationReached() {
         return floatComparator.isEqual(this.movementProgress, 1f);
     }
 }

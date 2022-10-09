@@ -37,4 +37,10 @@ public enum Direction {
                 break;
         }
     }
+
+    public GridPoint getMovedPoint(GridPoint pt) {
+        var ptCopy = new GridPoint(pt.x, pt.y);
+        movePoint(ptCopy);
+        return ptCopy;
+    }
 }

@@ -1,4 +1,4 @@
-package ru.mipt.bit.platformer.player.impl;
+package ru.mipt.bit.platformer.tank.impl;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
@@ -6,40 +6,43 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.GridPoint2;
 import com.badlogic.gdx.math.Rectangle;
 import ru.mipt.bit.platformer.gridpoint.GridPoint;
-import ru.mipt.bit.platformer.player.Player;
-import ru.mipt.bit.platformer.player.PlayerRenderer;
+import ru.mipt.bit.platformer.tank.Tank;
+import ru.mipt.bit.platformer.tank.TankRenderer;
 import ru.mipt.bit.platformer.util.TileMovement;
 
 import static com.badlogic.gdx.math.MathUtils.isEqual;
 import static ru.mipt.bit.platformer.util.GdxGameUtils.*;
 
-public class PlayerRendererImpl implements PlayerRenderer {
+public class TankRendererImpl implements TankRenderer {
     private final TextureRegion graphics;
     private final Rectangle rectangle;
     private final TileMovement tileMovement;
+    private final Tank tank;
 
-    public PlayerRendererImpl(
+    public TankRendererImpl(
             Texture texture,
-            TileMovement tileMovement
+            TileMovement tileMovement,
+            Tank tank
     ) {
         this.graphics = new TextureRegion(texture);
         this.rectangle = createBoundingRectangle(graphics);
         this.tileMovement = tileMovement;
+        this.tank = tank;
     }
 
-    public void draw(Batch batch, Player player) {
-        calculateRectanglePosition(player);
-        drawTextureRegionUnscaled(batch, this.graphics, this.rectangle, player.getCurrentDirection().getAngle());
+    public void draw(Batch batch) {
+        calculateRectanglePosition(this.tank);
+        drawTextureRegionUnscaled(batch, this.graphics, this.rectangle, tank.getCurrentDirection().getAngle());
     }
 
-    private void calculateRectanglePosition(Player player) {
-        GridPoint departureCoordinates = player.getDepartureCoordinates();
-        GridPoint destinationCoordinates = player.getDestinationCoordinates();
+    private void calculateRectanglePosition(Tank tank) {
+        GridPoint departureCoordinates = tank.getDepartureCoordinates();
+        GridPoint destinationCoordinates = tank.getDestinationCoordinates();
         this.tileMovement.moveRectangleBetweenTileCenters(
                 this.rectangle,
                 new GridPoint2(departureCoordinates.x, departureCoordinates.y),
                 new GridPoint2(destinationCoordinates.x, destinationCoordinates.y),
-                player.getMovementProgress()
+                tank.getMovementProgress()
         );
     }
 }
