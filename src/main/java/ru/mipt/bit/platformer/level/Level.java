@@ -10,4 +10,6 @@ public interface Level {
     boolean isOccupied(GridPoint pt);
     ArrayList<Tank> getTanks();
     ArrayList<Obstacle> getObstacles();
+    void addTank(Tank tank);
+    GridPoint randomCell();
 }

@@ -19,6 +19,9 @@ import ru.mipt.bit.platformer.level.Level;
 import ru.mipt.bit.platformer.level.impl.LevelImpl;
 import ru.mipt.bit.platformer.obstacle.impl.ObstacleImpl;
 import ru.mipt.bit.platformer.obstacle.impl.ObstacleRendererImpl;
+import ru.mipt.bit.platformer.player.Player;
+import ru.mipt.bit.platformer.player.impl.KeyboardPlayer;
+import ru.mipt.bit.platformer.player.impl.RandomAIPlayer;
 import ru.mipt.bit.platformer.tank.impl.TankImpl;
 import ru.mipt.bit.platformer.tank.impl.TankRendererImpl;
 import ru.mipt.bit.platformer.obstacle.Obstacle;
@@ -54,6 +57,7 @@ public class GameDesktopLauncher implements ApplicationListener {
     private ArrayList<TankRenderer> tankRenderers;
     private Texture greenTreeTexture;
     private ArrayList<ObstacleRenderer> obstacleRenderers;
+    private ArrayList<Player> players;
 
     private Level level;
 
@@ -74,11 +78,32 @@ public class GameDesktopLauncher implements ApplicationListener {
         tankRenderers = new ArrayList<>();
         obstacleRenderers = new ArrayList<>();
         level = extractLevelFromFile("src/main/resources/level.conf");
+        populateLevelWithRandomTanks(3);
+
+        players = new ArrayList<>();
+        var tanks = level.getTanks();
+        players.add(new KeyboardPlayer(
+                tanks.get(0),
+                level,
+                MOVEMENT_SPEED
+        ));
+        for (int i = 1; i < tanks.size(); ++i) {
+            players.add(new RandomAIPlayer(
+                    tanks.get(i),
+                    level,
+                    MOVEMENT_SPEED
+            ));
+        }
     }
 
     private LevelImpl extractLevelFromFile(String path) {
+        // TODO: separate abstractions and renderers; first, extract abstractions; then, extract
+        //  them from Level (getTanks, getObstacles) and create renderers
+
         ArrayList<Tank> tanks = new ArrayList<>();
         ArrayList<Obstacle> obstacles = new ArrayList<>();
+        int height = 0;
+        int width = 0;
 
         int linesCnt = 0;
         try {
@@ -87,11 +112,13 @@ public class GameDesktopLauncher implements ApplicationListener {
             e.printStackTrace();
             System.exit(1);
         }
+        height = linesCnt;
 
         try {
             Scanner sc = new Scanner(new BufferedReader(new FileReader(path)));
             for (int i = 0; sc.hasNextLine(); i++) {
                 String line = sc.nextLine();
+                width = line.length();
                 for (int j = 0; j < line.length(); j++) {
                     var currPt = new GridPoint(j, linesCnt - i);
                     switch (line.charAt(j)) {
@@ -127,7 +154,36 @@ public class GameDesktopLauncher implements ApplicationListener {
             System.exit(1);
         }
 
-        return new LevelImpl(tanks, obstacles);
+        return new LevelImpl(tanks, obstacles, height, width);
+    }
+
+    private void populateLevelWithRandomTanks(int tanksCnt) {
+        // TODO: separate abstractions and renderers
+        for (int i = 0; i < tanksCnt; ++i) {
+            Tank tank = randomTank();
+            level.addTank(tank);
+            tankRenderers.add(new TankRendererImpl(
+                    blueTankTexture,
+                    tileMovement,
+                    tank
+            ));
+        }
+    }
+
+    private TankImpl randomTank() {
+        GridPoint cell = null;
+        while (cell == null) {
+            var currCell = level.randomCell();
+            if (!level.isOccupied(currCell)) {
+                cell = currCell;
+            }
+        }
+        return new TankImpl(
+                cell,
+                Direction.RIGHT,
+                GdxGameUtils::continueProgress,
+                MathUtils::isEqual
+        );
     }
 
     @Override
@@ -143,30 +199,9 @@ public class GameDesktopLauncher implements ApplicationListener {
         Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    private Direction getDesiredDirection() {
-        Direction desiredDirection = Direction.NODIRECTION;
-        if (Gdx.input.isKeyPressed(UP) || Gdx.input.isKeyPressed(W)) {
-            desiredDirection = Direction.UP;
-        }
-        if (Gdx.input.isKeyPressed(LEFT) || Gdx.input.isKeyPressed(A)) {
-            desiredDirection = Direction.LEFT;
-        }
-        if (Gdx.input.isKeyPressed(DOWN) || Gdx.input.isKeyPressed(S)) {
-            desiredDirection = Direction.DOWN;
-        }
-        if (Gdx.input.isKeyPressed(RIGHT) || Gdx.input.isKeyPressed(D)) {
-            desiredDirection = Direction.RIGHT;
-        }
-        return desiredDirection;
-    }
-
     private void live(float deltaTime) {
-        for (var tank : level.getTanks()) {
-            var desiredDirection = getDesiredDirection();
-            var desiredCoordinates = desiredDirection.getMovedPoint(tank.getDepartureCoordinates());
-            if (!level.isOccupied(desiredCoordinates)) {
-                tank.move(desiredDirection, deltaTime, MOVEMENT_SPEED);
-            }
+        for (var player : players) {
+            player.live(deltaTime);
         }
     }
 

@@ -8,8 +8,12 @@ import com.badlogic.gdx.math.GridPoint2;
 import com.badlogic.gdx.math.Rectangle;
 import ru.mipt.bit.platformer.gridpoint.GridPoint;
 
+import java.util.ArrayList;
+
 import static ru.mipt.bit.platformer.util.GdxGameUtils.*;
 
 public interface Obstacle {
     GridPoint getCoordinates();
+
+    ArrayList<GridPoint> occupiedCells();
 }

@@ -2,6 +2,8 @@ package ru.mipt.bit.platformer.direction;
 
 import ru.mipt.bit.platformer.gridpoint.GridPoint;
 
+import java.util.*;
+
 public enum Direction {
     RIGHT(0),
     UP(90),
@@ -42,5 +44,18 @@ public enum Direction {
         var ptCopy = new GridPoint(pt.x, pt.y);
         movePoint(ptCopy);
         return ptCopy;
+    }
+
+    private static final List<Direction> VALUES = List.of(values());
+    private static final int SIZE = VALUES.size();
+    private static final Random RANDOM = new Random();
+
+    public static Direction randomDirection(boolean includeNoDirection) {
+        while (true) {
+            var direction = VALUES.get(RANDOM.nextInt(SIZE));
+            if (direction != NODIRECTION || includeNoDirection) {
+                return direction;
+            }
+        }
     }
 }

@@ -6,6 +6,8 @@ import ru.mipt.bit.platformer.tank.FloatComparator;
 import ru.mipt.bit.platformer.tank.Tank;
 import ru.mipt.bit.platformer.tank.ProgressUpdater;
 
+import java.util.ArrayList;
+
 public class TankImpl implements Tank {
     private final GridPoint departureCoordinates;
     private final GridPoint destinationCoordinates;
@@ -53,6 +55,15 @@ public class TankImpl implements Tank {
         }
     }
 
+    public ArrayList<GridPoint> occupiedCells() {
+        ArrayList<GridPoint> occupied = new ArrayList<>();
+        occupied.add(departureCoordinates);
+        if (!(departureCoordinates.equals(destinationCoordinates))) {
+            occupied.add(destinationCoordinates);
+        }
+        return occupied;
+    }
+
     private void tryToChangeMovementDirection(Direction desiredDirection) {
         if (desiredDirection != Direction.NODIRECTION && isDestinationReached()) {
             this.currentDirection = desiredDirection;
@@ -79,7 +90,7 @@ public class TankImpl implements Tank {
         this.movementProgress = 0f;
     }
 
-    private boolean isDestinationReached() {
+    public boolean isDestinationReached() {
         return floatComparator.isEqual(this.movementProgress, 1f);
     }
 }

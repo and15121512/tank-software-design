@@ -29,7 +29,7 @@ public class LevelTest {
         obstacles.add(new ObstacleImpl(new GridPoint(2, 2)));
         obstacles.add(new ObstacleImpl(new GridPoint(2, 0)));
 
-        Level level = new LevelImpl(tanks, obstacles);
+        Level level = new LevelImpl(tanks, obstacles, 3, 3);
         level.getTanks().get(0).move(Direction.UP, 1f, 0.5f);
 
         Assertions.assertTrue(level.isOccupied(new GridPoint(0, 1)));
