@@ -1,31 +1,37 @@
-package ru.mipt.bit.platformer.player.impl;
+package ru.mipt.bit.platformer.command.generator.impl;
 
 import com.badlogic.gdx.Gdx;
+import ru.mipt.bit.platformer.command.Command;
+import ru.mipt.bit.platformer.command.generator.CommandGenerator;
+import ru.mipt.bit.platformer.command.impl.MoveCommand;
+import ru.mipt.bit.platformer.deltatime.DeltaTime;
 import ru.mipt.bit.platformer.direction.Direction;
 import ru.mipt.bit.platformer.level.Level;
-import ru.mipt.bit.platformer.player.Player;
 import ru.mipt.bit.platformer.tank.Tank;
+
+import java.util.ArrayList;
 
 import static com.badlogic.gdx.Input.Keys.*;
 import static com.badlogic.gdx.Input.Keys.D;
 
-public class KeyboardPlayer implements Player {
-    private final Tank managedTank;
-    private final Level level;
-    private final float movementSpeed;
+public class KeyboardPlayerCommandGenerator implements CommandGenerator {
+    Tank player;
+    Level level;
+    DeltaTime deltaTime;
+    float movementSpeed;
 
-    public KeyboardPlayer(Tank managedTank, Level level, float movementSpeed) {
-        this.managedTank = managedTank;
+    public KeyboardPlayerCommandGenerator(Tank player, Level level, DeltaTime deltaTime, float movementSpeed) {
+        this.player = player;
         this.level = level;
+        this.deltaTime = deltaTime;
         this.movementSpeed = movementSpeed;
     }
 
-    public void live(float deltaTime) {
-        var desiredDirection = getDesiredDirection();
-        var desiredCoordinates = desiredDirection.getMovedPoint(managedTank.getDepartureCoordinates());
-        if (!(managedTank.isDestinationReached() && level.isOccupied(desiredCoordinates))) {
-            managedTank.move(desiredDirection, deltaTime, movementSpeed);
-        }
+    public ArrayList<Command> getCommands() {
+        ArrayList<Command> commands = new ArrayList<>();
+        var direction = getDesiredDirection();
+        commands.add(new MoveCommand(direction, player, level, deltaTime.getValue(), movementSpeed));
+        return commands;
     }
 
     private Direction getDesiredDirection() {

@@ -13,15 +13,19 @@ import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.MathUtils;
+import org.awesome.ai.strategy.NotRecommendingAI;
+import ru.mipt.bit.platformer.aiadapter.impl.AIAdapterImpl;
+import ru.mipt.bit.platformer.command.generator.CommandGenerator;
+import ru.mipt.bit.platformer.command.generator.impl.KeyboardPlayerCommandGenerator;
+import ru.mipt.bit.platformer.command.generator.impl.RandomMoveCommandGenerator;
+import ru.mipt.bit.platformer.command.generator.impl.SmartAICommandGenerator;
+import ru.mipt.bit.platformer.deltatime.DeltaTime;
 import ru.mipt.bit.platformer.direction.Direction;
 import ru.mipt.bit.platformer.gridpoint.GridPoint;
 import ru.mipt.bit.platformer.level.Level;
 import ru.mipt.bit.platformer.level.impl.LevelImpl;
 import ru.mipt.bit.platformer.obstacle.impl.ObstacleImpl;
 import ru.mipt.bit.platformer.obstacle.impl.ObstacleRendererImpl;
-import ru.mipt.bit.platformer.player.Player;
-import ru.mipt.bit.platformer.player.impl.KeyboardPlayer;
-import ru.mipt.bit.platformer.player.impl.RandomAIPlayer;
 import ru.mipt.bit.platformer.tank.impl.TankImpl;
 import ru.mipt.bit.platformer.tank.impl.TankRendererImpl;
 import ru.mipt.bit.platformer.obstacle.Obstacle;
@@ -57,7 +61,7 @@ public class GameDesktopLauncher implements ApplicationListener {
     private ArrayList<TankRenderer> tankRenderers;
     private Texture greenTreeTexture;
     private ArrayList<ObstacleRenderer> obstacleRenderers;
-    private ArrayList<Player> players;
+    private ArrayList<CommandGenerator> commandGenerators;
 
     private Level level;
 
@@ -80,20 +84,26 @@ public class GameDesktopLauncher implements ApplicationListener {
         level = extractLevelFromFile("src/main/resources/level.conf");
         populateLevelWithRandomTanks(3);
 
-        players = new ArrayList<>();
-        var tanks = level.getTanks();
-        players.add(new KeyboardPlayer(
-                tanks.get(0),
+        commandGenerators = new ArrayList<>();
+        commandGenerators.add(new KeyboardPlayerCommandGenerator(
+                level.getPlayer(),
                 level,
+                DeltaTime.INSTANCE,
                 MOVEMENT_SPEED
         ));
-        for (int i = 1; i < tanks.size(); ++i) {
-            players.add(new RandomAIPlayer(
-                    tanks.get(i),
-                    level,
-                    MOVEMENT_SPEED
-            ));
-        }
+//        commandGenerators.add(new RandomMoveCommandGenerator(
+//                level.getBots(),
+//                level,
+//                DeltaTime.INSTANCE,
+//                MOVEMENT_SPEED
+//        ));
+        commandGenerators.add(new SmartAICommandGenerator(
+                level.getBots(),
+                level,
+                DeltaTime.INSTANCE,
+                MOVEMENT_SPEED,
+                new AIAdapterImpl(new NotRecommendingAI(), level)
+        ));
     }
 
     private LevelImpl extractLevelFromFile(String path) {
@@ -154,7 +164,7 @@ public class GameDesktopLauncher implements ApplicationListener {
             System.exit(1);
         }
 
-        return new LevelImpl(tanks, obstacles, height, width);
+        return new LevelImpl(tanks.get(0), tanks, obstacles, height, width);
     }
 
     private void populateLevelWithRandomTanks(int tanksCnt) {
@@ -189,8 +199,8 @@ public class GameDesktopLauncher implements ApplicationListener {
     @Override
     public void render() {
         clearScreen();
-        float deltaTime = Gdx.graphics.getDeltaTime();
-        live(deltaTime);
+        setDeltaTimeToLive();
+        live();
         draw();
     }
 
@@ -199,9 +209,15 @@ public class GameDesktopLauncher implements ApplicationListener {
         Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    private void live(float deltaTime) {
-        for (var player : players) {
-            player.live(deltaTime);
+    private void setDeltaTimeToLive() {
+        DeltaTime.INSTANCE.setValue(Gdx.graphics.getDeltaTime());
+    }
+
+    private void live() {
+        for (var commandGenerator : commandGenerators) {
+            for (var command : commandGenerator.getCommands()) {
+                command.execute();
+            }
         }
     }
 

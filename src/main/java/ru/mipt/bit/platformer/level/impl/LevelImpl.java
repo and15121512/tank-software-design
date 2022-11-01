@@ -6,24 +6,34 @@ import ru.mipt.bit.platformer.obstacle.Obstacle;
 import ru.mipt.bit.platformer.tank.Tank;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class LevelImpl implements Level {
     public ArrayList<Tank> getTanks() {
         return tanks;
     }
-
+    public Tank getPlayer() {
+        return tanks.get(0);
+    }
+    public List<Tank> getBots() {
+        return tanks.subList(2, tanks.size());
+    }
     public ArrayList<Obstacle> getObstacles() {
         return obstacles;
     }
+    public int getHeight() { return height; }
+    public int getWidth() { return width; }
 
     private final ArrayList<Tank> tanks;
     private final ArrayList<Obstacle> obstacles;
     private final int height;
     private final int width;
 
-    public LevelImpl(ArrayList<Tank> tanks, ArrayList<Obstacle> obstacles, int height, int width) {
-        this.tanks = tanks;
+    public LevelImpl(Tank player, ArrayList<Tank> bots, ArrayList<Obstacle> obstacles, int height, int width) {
+        this.tanks = new ArrayList<>();
+        tanks.add(player);
+        tanks.addAll(bots);
         this.obstacles = obstacles;
         this.height = height;
         this.width = width;

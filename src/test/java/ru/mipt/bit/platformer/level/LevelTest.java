@@ -17,19 +17,19 @@ import java.util.ArrayList;
 public class LevelTest {
     @Test
     void test_LevelIsOccupied() {
-        ArrayList<Tank> tanks = new ArrayList<>();
-        tanks.add(new TankImpl(
+        Tank player = new TankImpl(
                 new GridPoint(1, 1),
                 Direction.RIGHT,
                 GdxGameUtils::continueProgress,
                 MathUtils::isEqual
-        ));
+        );
+        ArrayList<Tank> bots = new ArrayList<>();
         ArrayList<Obstacle> obstacles = new ArrayList<>();
         obstacles.add(new ObstacleImpl(new GridPoint(0, 1)));
         obstacles.add(new ObstacleImpl(new GridPoint(2, 2)));
         obstacles.add(new ObstacleImpl(new GridPoint(2, 0)));
 
-        Level level = new LevelImpl(tanks, obstacles, 3, 3);
+        Level level = new LevelImpl(player, bots, obstacles, 3, 3);
         level.getTanks().get(0).move(Direction.UP, 1f, 0.5f);
 
         Assertions.assertTrue(level.isOccupied(new GridPoint(0, 1)));
